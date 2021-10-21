@@ -6,26 +6,27 @@ const Log = db.define('log', {
     id: {
         type: Sequelize.INTEGER,
         primaryKey: true, 
-        autoIncrement: true
+        autoIncrement: true,
+        allowNull: false
     }, 
     expirationTime: {
-        type: Sequelize.INTEGER, 
+        type: Sequelize.BIGINT, 
         allowNull: false
     }, 
     qty: {
         type: Sequelize.INTEGER, 
         allowNull: false
     },
-    soldQty: {
+    soldQty: { 
         type: Sequelize.INTEGER, 
         allowNull: true
     }, 
     state: {
         type: Sequelize.ENUM('sold', 'instock'),
         allowNull: true
-    }
+    } 
 })
 
-Log.belongsTo(Product);
+
 
 module.exports = Log;

@@ -5,7 +5,9 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "nodemon server.js"
+    "dev": "nodemon server.js", 
+    "migrate" : "cd src && npx sequelize-cli db:migrate",
+    "migrateUndo" : "cd src  && npx sequelize-cli db:migrate:undo"
   },
   "keywords": [],
   "license": "ISC",
@@ -32,6 +34,7 @@
   },
   "devDependencies": {
     "jest": "^26.4.2",
-    "nodemon": "^1.19.4"
+    "nodemon": "^1.19.4",
+    "sequelize-cli": "^6.2.0"
   }
 }
