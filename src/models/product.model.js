@@ -18,7 +18,7 @@ const Product = db.define('product', {
         type: Sequelize.INTEGER, 
         allowNull: false
     },
-    lowestTime: {
+    lowesttime: {
         type: Sequelize.BIGINT, 
         allowNull: false
     }, 

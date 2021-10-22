@@ -3,9 +3,9 @@ const ProductController = require('../controllers/product.controller');
 
 router.post('/add/:item', ProductController.addProducts);
 
-router.post('/sell/:item');
+router.post('/sell/:item', ProductController.sellProducts);
 
-router.get('/quantity/:item');
+router.get('/quantity/:item', ProductController.getProducts);
 
 
 module.exports = router

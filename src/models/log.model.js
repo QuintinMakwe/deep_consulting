@@ -9,7 +9,7 @@ const Log = db.define('log', {
         autoIncrement: true,
         allowNull: false
     }, 
-    expirationTime: {
+    expirationtime: {
         type: Sequelize.BIGINT, 
         allowNull: false
     }, 
@@ -17,13 +17,15 @@ const Log = db.define('log', {
         type: Sequelize.INTEGER, 
         allowNull: false
     },
-    soldQty: { 
+    soldqty: { 
         type: Sequelize.INTEGER, 
-        allowNull: true
+        allowNull: true,
+        defaultValue: 0
     }, 
     state: {
         type: Sequelize.ENUM('sold', 'instock'),
-        allowNull: true
+        allowNull: true,
+        defaultValue: "instock"
     } 
 })
 
