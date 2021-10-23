@@ -9,6 +9,7 @@ module.exports = (app) => {
      });
 
      app.use((error, req, res, next) => {
+          console.log('this  is the error ', error);
           if (error.name == "CustomError") {
                res.status(error.status).send(response(error.message, null, false));
           }

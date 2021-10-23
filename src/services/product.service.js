@@ -78,6 +78,7 @@ class ProductService{
     static async sellProduct(data) {
         const {item} = data.params;
         let {quantity} = data.body;
+        const unchangedQty = quantity;
 
         //verify that total products in stock can cather for quantity to be sold 
         const isProductSufficient = await Product.findAll({where: {name: item}})
@@ -85,38 +86,74 @@ class ProductService{
         if(isProductSufficient[0].dataValues.qty < quantity) throw new CustomError('Out of quantity!')
 
         //get products from the log table that haven't been sold out and arrange in ascending order of expiration time 
-        const logRecords = await db.query(`SELECT * FROM products, logs WHERE products.name = '${item}' AND logs.qty != logs.soldqty ORDER BY logs.expirationTime ASC`);
+        const logRecords = await db.query(`SELECT * FROM products, logs WHERE products.name = '${item}' AND logs.qty != logs.soldqty ORDER BY logs.expirationtime ASC`);
 
         //start transaction here 
+        // await db.transaction(async (transaction) => {
+        //     for(let i = 0; i < logRecords[0].length ; i++) {
+        //         console.log(`log record ${i} `, logRecords[0][i])
+        //         console.log('quantity before ', quantity);
+
+        //         if((logRecords[0][i].qty -logRecords[0][i].soldqty) - quantity < 0 ) { 
+        //             let updatedQty = await this.setQtyToZero({data: logRecords[0][i], quantity});
+        //             quantity = updatedQty.quantity;
+        //             console.log('quantity after', quantity);
+        //             continue 
+        //         }
+
+        //         //update the logs table 
+        //         await Log.findByPk(logRecords[0][i].id).then(log => {
+        //             log.increment('soldqty', {by: quantity}, {transaction})
+        //         })
+        //         //update the products table 
+        //         await Product.findByPk(logRecords[0][i].productId).then(product => {
+        //             product.decrement('qty', {by: quantity}, {transaction})
+        //         })
+        //         await Product.update({lowesttime: logRecords[0][i].lowesttime}, {where: {
+        //             id: logRecords[0][i].productId
+        //         }}, {transaction})
+
+        //         break;
+        //     }
+        // });
+        //start transaction here 
         await db.transaction(async (transaction) => {
+            let logIdsSetToZero = [];
+            let logsToUpdate = null;
             for(let i = 0; i < logRecords[0].length ; i++) {
-                console.log(`log record ${i} `, logRecords[0][i])
+                console.log(`log record ${i} `, logRecords[0][i]);
                 console.log('quantity before ', quantity);
 
-                if(logRecords[0][i].qty - quantity < 0 ) { 
-                    let updatedQty = await this.setQtyToZero({data: logRecords[0][i], quantity});
-                    quantity = updatedQty.quantity;
+                if((logRecords[0][i].qty -logRecords[0][i].soldqty) - quantity < 0 ) { 
+                    logIdsSetToZero.push(logRecords[0][i].id);
+                    quantity -= logRecords[0][i].qty
                     console.log('quantity after', quantity);
                     continue 
                 }
 
-                //update the logs table 
-                await Log.findByPk(logRecords[0][i].id).then(log => {
-                    log.increment('soldqty', {by: quantity}, {transaction})
-                })
-                //update the products table 
-                await Product.findByPk(logRecords[0][i].productId).then(product => {
-                    product.decrement('qty', {by: quantity}, {transaction})
-                })
-                await Product.update({lowesttime: logRecords[0][i].lowesttime}, {where: {
-                    id: logRecords[0][i].productId
-                }}, {transaction})
-
+                logsToUpdate = {id: logRecords[0][i].id, quantity, timestamp: logRecords[0][i].lowesttime}
                 break;
             }
+
+            let logUpdate = `UPDATE logs SET soldqty = qty, state =  'sold' WHERE id IN (${logIdsSetToZero.join(',')})`
+            logUpdate += logsToUpdate !== null ? ` \n UPDATE logs SET soldqty = '${logsToUpdate.quantity}' WHERE id = '${logsToUpdate.id}'` : ';'
+            let productUpdate = `UPDATE products SET products.qty = products.qty - ${unchangedQty} WHERE products.name = '${item}'`;
+            if(productUpdate  !== null){
+                const lowestTime = `SELECT expirationtime FROM logs ORDER BY logs.expirationtime ASC LIMIT 1`
+                productUpdate += ` \n UPDATE products SET products.lowesttime = '${lowestTime}'`
+            }else {
+                productUpdate += `\n UPDATE products SET products.lowesttime = '${logsToUpdate.timestamp}' WHERE products.name = '${item}'` 
+            }
+            console.log('log update query ::', logUpdate);
+            console.log('product update query ::', productUpdate);
+
+            await db.query(logUpdate, {transaction});
+            await db.query(productUpdate, {transaction})
+
+
         });
 
-        return logRecords;
+        return;
     }
 
     static async getProduct(data) {
@@ -124,7 +161,7 @@ class ProductService{
 
         const product = await Product.findAll({where: { name: item}})
 
-        return product[0].dataValues.qty == 0 ? {quantity: product[0].dataValues.qty, validTill: null} : {quantity: product[0].dataValues.qty, validTill: product[0].dataValues.lowesttime} ;
+        return product[0].dataValues.qty == 0 ? {quantity: product[0].dataValues.qty, validTill: product[0].dataValues.lowesttime} : {quantity: product[0].dataValues.qty, validTill: product[0].dataValues.lowesttime} ;
     }
 }
 
